@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mandalamonchy — Monta, the Mandara Maker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --ink: #1a1a2e;
+  --paper: #f5f0e8;
+  --warm: #faf6ef;
+  --mist: #e8e0d4;
+  --accent: #c84b31;
+  --gold: #d4a847;
+  --sage: #5a7a6a;
+  --monta: #4a7c8e;
+  --monta-light: #e8f2f5;
+  --monta-mid: #7aafc0;
+  /* mandala cell colors */
+  --cell-goal: rgba(212,168,71,.22);
+  --cell-pillar: rgba(74,124,142,.18);
+  --cell-sub: rgba(74,124,142,.10);
+  --cell-item: rgba(250,246,239,.7);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--ink);
+  padding: 12px 24px;
+  display: flex; align-items: center; gap: 14px;
+  border-bottom: 3px solid var(--monta);
+  flex-shrink: 0;
+}
+.header-icon {
+  font-size: 26px;
+  animation: breathe 5s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+.header-title { flex: 1; }
+.header-title h1 { font-size: 20px; font-weight: 900; color: #fff; line-height: 1.1; }
+.header-title h1 span { color: var(--gold); }
+.header-label { font-family: 'Space Mono', monospace; font-size: 10px; color: #888; letter-spacing: 0.2em; }
+.key-indicator {
+  font-family: 'Space Mono', monospace; font-size: 10px; color: #888;
+  cursor: pointer; padding: 4px 8px; border: 1px solid #444; border-radius: 2px; transition: all 0.15s;
+}
+.key-indicator:hover { color: #fff; border-color: #fff; }
+.key-indicator.active { color: var(--gold); border-color: var(--gold); }
+
+/* ── LEAD ── */
+.lead-banner {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f2a35 100%);
+  padding: 8px 24px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+  flex-shrink: 0;
+}
+.lead-banner p { font-size: 13px; color: #ccc; letter-spacing: 0.05em; line-height: 1.5; }
+.lead-banner p strong { color: var(--gold); }
+
+/* ── CHAT PANEL ── */
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--warm);
+  min-height: 0;
+}
+
+/* ── MESSAGES ── */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+@media (min-width: 768px) {
+  .chat-messages { padding: 24px calc(50% - 380px); }
+}
+
+.msg { display: flex; gap: 10px; max-width: 100%; }
+.msg.user { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+}
+.msg.monta .msg-avatar { background: var(--monta); font-size: 16px; }
+.msg-bubble {
+  max-width: min(520px, calc(100% - 46px));
+  padding: 12px 16px; border-radius: 4px; font-size: 14px; line-height: 1.75;
+}
+.msg.monta .msg-bubble {
+  background: #fff; border: 1.5px solid var(--monta-light);
+  border-top-left-radius: 0; box-shadow: 2px 2px 0 var(--monta-light);
+  white-space: pre-wrap;
+}
+.msg.user .msg-bubble {
+  background: var(--ink); color: #fff; border-top-right-radius: 0;
+  white-space: pre-wrap;
+}
+.msg-time {
+  font-family: 'Space Mono', monospace; font-size: 10px; color: #aaa;
+  margin-top: 4px; text-align: right;
+}
+.msg.monta .msg-time { text-align: left; }
+
+/* ── タイピング ── */
+.typing-indicator {
+  display: flex; gap: 4px; padding: 12px 16px; background: #fff;
+  border: 1.5px solid var(--monta-light); border-radius: 4px; border-top-left-radius: 0; width: fit-content;
+}
+.typing-indicator span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--monta);
+  animation: typing 1.2s ease-in-out infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-6px);opacity:1} }
+
+/* ── マンダラプレビューカード ── */
+.mandala-preview-card {
+  width: 100%;
+  max-width: min(760px, calc(100% - 46px));
+  background: #fff;
+  border: 2px solid var(--monta);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 4px 4px 0 var(--monta-light);
+}
+.mandala-preview-header {
+  background: var(--ink); color: #fff;
+  padding: 10px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.mandala-preview-header span { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.1em; }
+.preview-tag {
+  background: var(--gold); color: var(--ink);
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 2px;
+  letter-spacing: 0.1em;
+}
+.mandala-preview-body { padding: 12px; overflow-x: auto; }
+
+/* ── 9x9 グリッド ── */
+.mandala-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 0;
+  border: 2px solid rgba(26,26,46,.15);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 540px;
+  font-size: 10px;
+}
+.mc {
+  border: 1px solid rgba(26,26,46,.10);
+  padding: 5px 4px;
+  min-height: 48px;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  word-break: break-word;
+}
+.mc.goal {
+  font-weight: 900; font-size: 11px;
+  background: var(--cell-goal);
+  border-color: rgba(212,168,71,.4);
+}
+.mc.pillar {
+  font-weight: 800;
+  background: var(--cell-pillar);
+  border-color: rgba(74,124,142,.3);
+}
+.mc.subcenter {
+  font-weight: 700;
+  background: var(--cell-sub);
+  border-color: rgba(74,124,142,.25);
+}
+.mc.item {
+  background: var(--cell-item);
+}
+.mc.empty {
+  background: rgba(232,224,212,.3);
+  color: #bbb;
+  font-size: 9px;
+}
+
+.mandala-preview-actions {
+  padding: 12px 16px;
+  background: var(--monta-light);
+  display: flex; gap: 8px; align-items: center;
+  border-top: 1px solid #d0e8f0;
+}
+.mandala-preview-actions p {
+  flex: 1; font-size: 12px; color: var(--monta); font-weight: 700;
+}
+.btn-save-html {
+  background: var(--monta); color: #fff;
+  border: none; border-radius: 4px;
+  padding: 8px 20px;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+}
+.btn-save-html:hover { background: var(--ink); }
+.btn-copy-html {
+  background: transparent; color: var(--monta);
+  border: 1.5px solid var(--monta); border-radius: 4px;
+  padding: 8px 14px;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-copy-html:hover { background: var(--monta); color: #fff; }
+
+/* ── INPUT ── */
+.chat-input-area {
+  padding: 16px 20px;
+  background: #fff;
+  border-top: 2px solid var(--mist);
+  flex-shrink: 0;
+}
+@media (min-width: 768px) {
+  .chat-input-area { padding: 16px calc(50% - 380px); }
+}
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.chat-input {
+  flex: 1; border: 2px solid var(--mist); border-radius: 4px; padding: 10px 14px;
+  font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 14px; resize: none;
+  min-height: 44px; max-height: 120px; outline: none; transition: border-color 0.2s; line-height: 1.5;
+}
+.chat-input:focus { border-color: var(--monta); }
+.send-btn {
+  background: var(--ink); color: #fff; border: none; border-radius: 4px; padding: 10px 20px;
+  font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
+}
+.send-btn:hover { background: var(--monta); }
+.send-btn:disabled { background: #ccc; cursor: not-allowed; }
+.hint-text { font-family: 'Space Mono', monospace; font-size: 10px; color: #aaa; margin-top: 8px; text-align: center; }
+
+/* ── スピナー ── */
+.spinner { width: 24px; height: 24px; border: 3px solid var(--monta-light); border-top-color: var(--monta); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 12px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(26,26,46,0.7);
+  backdrop-filter: blur(4px); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #fff; border: 3px solid var(--ink); border-radius: 4px;
+  padding: 36px 32px; max-width: 440px; width: 100%; box-shadow: 8px 8px 0 var(--ink);
+}
+.modal-icon { font-size: 40px; text-align: center; margin-bottom: 16px; display: block; }
+.modal-title { font-size: 20px; font-weight: 900; margin-bottom: 6px; text-align: center; }
+.modal-sub { font-size: 13px; color: #666; text-align: center; margin-bottom: 24px; line-height: 1.6; }
+.modal-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.modal-input {
+  flex: 1; border: 2px solid var(--mist); border-radius: 4px; padding: 10px 14px;
+  font-family: 'Space Mono', monospace; font-size: 12px; outline: none; transition: border-color 0.2s;
+}
+.modal-input:focus { border-color: var(--monta); }
+.modal-btn {
+  background: var(--ink); color: #fff; border: none; border-radius: 4px; padding: 10px 20px;
+  font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s;
+}
+.modal-btn:hover { background: var(--monta); }
+.modal-note { font-size: 11px; color: #aaa; line-height: 1.6; text-align: center; }
+.modal-note a { color: var(--monta); text-decoration: none; }
+.modal-note a:hover { text-decoration: underline; }
+.modal-error { font-size: 12px; color: var(--accent); text-align: center; margin-bottom: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-icon">🐒</div>
+  <div class="header-title">
+    <div class="header-label">QQ #012 / questqueries</div>
+    <h1 style="font-size:22px;font-weight:900;letter-spacing:-.02em;">mandalamonchy <span style="font-weight:400;color:var(--gold);font-size:16px;">— Monta</span></h1>
+  </div>
+  <div class="key-indicator" id="keyIndicator" onclick="showKeyModal()">🔑 APIキー未設定</div>
+</header>
+
+<div class="lead-banner">
+  <p>モンタが一緒に、あなたの<strong>マンダラチャート</strong>を紡ぎます。</p>
+  <p style="font-size:11px;color:#888;margin-top:4px;">考える前に、手を動かしてみようか。</p>
+</div>
+
+<!-- APIキーモーダル -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal-box">
+    <span class="modal-icon">🐒</span>
+    <div class="modal-title">APIキーを設定してね</div>
+    <div class="modal-sub">モンタを動かすにはAnthropicのAPIキーが必要。<br>キーはこのブラウザにだけ保存されるよ。</div>
+    <div class="modal-error" id="keyError"></div>
+    <div class="modal-input-row">
+      <input type="password" class="modal-input" id="keyInput" placeholder="sk-ant-..." autocomplete="off">
+      <button class="modal-btn" onclick="saveApiKey()">保存</button>
+    </div>
+    <div class="modal-note">
+      キーは <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> で取得できる。<br>
+      月の使用上限を設定しておくのをおすすめするよ。
+    </div>
+  </div>
+</div>
+
+<div class="chat-panel">
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-area">
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="userInput" placeholder="話しかけてみてください" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">送る</button>
+    </div>
+    <div class="hint-text">Enter で送信 / Shift+Enter で改行</div>
+  </div>
+</div>
+
+<script>
+// ── SYSTEM PROMPT ──
+const MONTA_SYSTEM = `あなたは「モンタ」— Magic Monkey Monta, the Mandara Maker です。
+ユーザーと対話しながら、9×9のマンダラチャートを一緒に作り上げます。
+
+## キャラクター
+- 魔法使いのサル。飄々としてるけど、手だけは異様に速い
+- 最初の一言：「考える前に、手を動かしてみようか」
+- ユーザーが詰まったら：「どうした？じゃあ僕が書いてみるよ」
+- 完璧主義を壊す職人。「空欄は伸び代」が信念
+- 提案型：ユーザーにゼロから考えさせず、常に「叩き台」を先に出す
+- 「おまかせ」「スキップ」には即座に対応
+
+## マンダラチャートとは
+9×9グリッド（81マス）のフレームワーク。
+- 中心（1マス）：主要な目標・テーマ
+- 中心周り8マス：8つの柱（カテゴリ）
+- 各柱ごとに8マスのアクション（合計64マス）
+空欄があってもいい。それも発見。
+
+## 対話フロー（ステップ制御）
+
+### Step 1: アイスブレイク
+最初の一言で進め方を選んでもらう：
+「提案型（モンタが先に出す）」か「対話型（一緒にじっくり）」か。
+
+### Step 2: 心の温度確認
+3つだけ聞く（短く、軽く）：
+- 最近うまくいったこと、嬉しかったこと
+- もっとこうしたかったこと
+- 自分らしいと思う瞬間
+
+### Step 3: 中心目標の提案
+Step2の回答をもとに、中心目標を3案提示。
+ユーザーが選ぶか、自分の言葉で言い換える。
+
+### Step 4: 8つの柱を決める
+振り返りベースの柱案8つを提示。
+「おまかせ」で即確定できる。
+
+### Step 5: 各柱の行動を決める
+柱ごとに8つの行動案を提示。
+「残りもおまかせ」で全柱を一気に埋めることもできる。
+空欄OKを常に伝える。
+
+### Step 6: 確認・調整
+完成案を要約して提示。
+バランスや抜け漏れを確認。
+
+### Step 7: JSON出力（承認後）
+ユーザーが「いいね」「OK」「これで」など承認したら、
+短い一言の後に必ず以下のJSONを出力する。
+
+\`\`\`mandala
+{
+  "title": "チャートのタイトル（例：2026年マンダラチャート）",
+  "center": "中心目標の文章",
+  "pillars": [
+    { "name": "柱1名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱2名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱3名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱4名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱5名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱6名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱7名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱8名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] }
+  ]
+}
+\`\`\`
+
+ルール：
+- itemsが8個未満の場合は "" (空文字) で埋める
+- 文字列内の改行は\\n、ダブルクォートは\\"でエスケープ
+- JSONブロック以外の説明文はJSONの前に書く
+
+## コミュニケーション原則
+- 短い文。友達感覚。丁寧すぎない
+- 「おまかせ」「スキップ」には即対応
+- 空欄を恐れない、むしろ「空欄は伸び代」と伝える
+- 1つの返信で質問は1つまで
+- 進捗を軽く示す（「柱 3/8」など）
+- 疲れてきたら「残りはモンタに任せる？」と声かけ`;
+
+// ── STATE ──
+let messages = [];
+let currentMandalaData = null;
+let isLoading = false;
+let apiKey = '';
+
+// ── API KEY ──
+function loadApiKey() { try { return localStorage.getItem('monta_api_key') || ''; } catch(e) { return ''; } }
+function saveApiKey() {
+  const input = document.getElementById('keyInput').value.trim();
+  const err = document.getElementById('keyError');
+  if (!input.startsWith('sk-ant-')) { err.textContent = '「sk-ant-」で始まるキーを入力してね'; return; }
+  try { localStorage.setItem('monta_api_key', input); } catch(e) {}
+  apiKey = input; err.textContent = '';
+  hideKeyModal(); updateKeyIndicator(true);
+}
+function showKeyModal() {
+  document.getElementById('keyInput').value = apiKey || '';
+  document.getElementById('keyError').textContent = '';
+  document.getElementById('keyModal').classList.remove('hidden');
+}
+function hideKeyModal() { document.getElementById('keyModal').classList.add('hidden'); }
+function updateKeyIndicator(active) {
+  const el = document.getElementById('keyIndicator');
+  el.textContent = active ? '🔑 APIキー設定済' : '🔑 APIキー未設定';
+  el.classList.toggle('active', active);
+}
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  apiKey = loadApiKey();
+  if (apiKey) { hideKeyModal(); updateKeyIndicator(true); }
+  else { document.getElementById('keyModal').classList.remove('hidden'); }
+  document.getElementById('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+
+  addMontaMessage('考える前に、手を動かしてみようか。🐒\n\nモンタです。マンダラチャート、一緒に作ろう。\n\n進め方どっちにする？\n\n A）提案型（おすすめ）\n　 僕が先に叩き台を出す。選んで調整するだけ。\n\n B）対話型\n　 一つずつ、じっくり一緒に。');
+
+  document.getElementById('userInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.getElementById('userInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  });
+});
+
+// ── CHAT ──
+function addMontaMessage(text) { messages.push({ role: 'assistant', content: text }); renderMessage('monta', text); }
+function addUserMessage(text) { messages.push({ role: 'user', content: text }); renderMessage('user', text); }
+
+function scrollToBottom() {
+  const c = document.getElementById('chatMessages');
+  c.scrollTop = c.scrollHeight;
+}
+
+function renderMessage(who, text) {
+  const container = document.getElementById('chatMessages');
+  const typing = container.querySelector('.typing-msg');
+  if (typing) typing.remove();
+
+  const msgEl = document.createElement('div');
+  msgEl.className = `msg ${who}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = who === 'monta' ? '🐒' : 'you';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text.replace(/```mandala[\s\S]*?```/g, '').trim();
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  const now = new Date();
+  time.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const inner = document.createElement('div');
+  inner.style.cssText = 'display:flex;flex-direction:column;max-width:min(520px,calc(100% - 46px));';
+  inner.appendChild(bubble);
+  inner.appendChild(time);
+
+  if (who === 'user') { msgEl.appendChild(inner); msgEl.appendChild(avatar); }
+  else { msgEl.appendChild(avatar); msgEl.appendChild(inner); }
+
+  container.appendChild(msgEl);
+  scrollToBottom();
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg monta typing-msg';
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '🐒';
+  const ind = document.createElement('div');
+  ind.className = 'typing-indicator';
+  ind.innerHTML = '<span></span><span></span><span></span>';
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(ind);
+  container.appendChild(wrapper);
+  scrollToBottom();
+}
+
+// ── SEND ──
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  input.value = ''; input.style.height = 'auto';
+  if (!apiKey) { showKeyModal(); return; }
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+  showTyping();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: MONTA_SYSTEM,
+        messages: messages.slice(-20)
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'ごめん、うまく受け取れなかった…もう一度話しかけて';
+    addMontaMessage(reply);
+
+    // mandalaブロック検出
+    const mandalaMatch = reply.match(/```mandala\n([\s\S]*?)\n```/);
+    if (mandalaMatch) {
+      try {
+        const mandalaData = JSON.parse(mandalaMatch[1]);
+        currentMandalaData = mandalaData;
+        insertMandalaPreview(mandalaData);
+      } catch(e) {
+        console.error('Mandala parse error:', e);
+        addMontaMessage('チャートの描画に失敗した…「もう一度チャートを作って」って話しかけてみて');
+      }
+    }
+  } catch(e) {
+    console.error(e);
+    addMontaMessage('ちょっと通信が途切れた…もう一度試してみて');
+  } finally {
+    isLoading = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+// ── 9x9グリッド配置ロジック ──
+// マンダラチャートの9x9配置
+// 柱のインデックス(0-7)とグリッド上の位置の対応
+// 配置:
+//   [p0][p1][p2]
+//   [p7][中心][p3]
+//   [p6][p5][p4]
+// 各3x3ブロックの位置
+
+function buildMandalaGrid(data) {
+  // 9x9 = 81セルの配列を作る
+  // row * 9 + col でインデックス
+  const cells = new Array(81).fill(null).map(() => ({ type: 'empty', text: '' }));
+
+  const center = data.center || '';
+  const pillars = data.pillars || [];
+
+  // ブロック配置マップ（3x3ブロックの左上座標）
+  // pillar index → block [row, col] of top-left
+  const blockPos = [
+    [0, 0], // p0: 左上
+    [0, 3], // p1: 上中
+    [0, 6], // p2: 右上
+    [3, 6], // p3: 右中
+    [6, 6], // p4: 右下
+    [6, 3], // p5: 下中
+    [6, 0], // p6: 左下
+    [3, 0], // p7: 左中
+  ];
+
+  // 中心の3x3ブロック（row 3-5, col 3-5）
+  // subcenter（中心目標の再掲）は[3,3],[3,5],[5,3],[5,5]の4隅
+  // 柱名は[3,4],[4,3],[4,5],[5,4]の十字
+  // 実際の中心は[4,4]
+
+  // 各ブロック内のセル配置: 中心は[1,1]、柱ラベルは外側（中心ブロック側）
+  // アイテムは8つ：[0,0][0,1][0,2][1,0]_[1,2][2,0][2,1][2,2]（真ん中除く）
+  const itemOffsets = [
+    [0,0],[0,1],[0,2],
+    [1,0],      [1,2],
+    [2,0],[2,1],[2,2]
+  ];
+
+  // 中心セル
+  cells[4*9+4] = { type: 'goal', text: center };
+
+  pillars.forEach((pillar, pi) => {
+    const [br, bc] = blockPos[pi];
+    // subcentering: ブロック中心にpillar名
+    const subR = br + 1;
+    const subC = bc + 1;
+    cells[subR*9+subC] = { type: 'subcenter', text: pillar.name || '' };
+
+    // 中心3x3の対応セルにもpillar名（pillarセル）
+    // 中心3x3の配置
+    const pillarPos = [
+      [3,3],[3,4],[3,5],
+      [4,3],     [4,5],
+      [5,3],[5,4],[5,5]
+    ];
+    cells[pillarPos[pi][0]*9+pillarPos[pi][1]] = { type: 'pillar', text: pillar.name || '' };
+
+    // items
+    const items = pillar.items || [];
+    itemOffsets.forEach((offset, ii) => {
+      const r = br + offset[0];
+      const c = bc + offset[1];
+      const itemText = items[ii] || '';
+      cells[r*9+c] = { type: itemText ? 'item' : 'empty', text: itemText };
+    });
+  });
+
+  return cells;
+}
+
+// ── プレビューカードをチャットに挿入 ──
+function insertMandalaPreview(data) {
+  const container = document.getElementById('chatMessages');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg monta';
+  wrapper.style.maxWidth = '100%';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '🐒';
+
+  const card = document.createElement('div');
+  card.className = 'mandala-preview-card';
+
+  const cells = buildMandalaGrid(data);
+
+  // グリッドHTML生成
+  let gridHtml = '<div class="mandala-grid">';
+  cells.forEach(cell => {
+    gridHtml += `<div class="mc ${cell.type}">${cell.text || (cell.type === 'empty' ? '…' : '')}</div>`;
+  });
+  gridHtml += '</div>';
+
+  card.innerHTML = `
+    <div class="mandala-preview-header">
+      <span>🐒 ${data.title || 'マンダラチャート'}</span>
+      <span class="preview-tag">PREVIEW</span>
+    </div>
+    <div class="mandala-preview-body">
+      <div style="font-family:'Space Mono',monospace;font-size:9px;color:#aaa;margin-bottom:8px;letter-spacing:.1em;">CENTER: ${data.center || ''}</div>
+      ${gridHtml}
+    </div>
+    <div class="mandala-preview-actions">
+      <p>これでよければHTMLに保存できるよ 🐒</p>
+      <button class="btn-copy-html" onclick="copyMandalaHTML()">コピー</button>
+      <button class="btn-save-html" onclick="dropMandalaHTML()">⬇ HTMLを保存</button>
+    </div>`;
+
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(card);
+  container.appendChild(wrapper);
+  scrollToBottom();
+}
+
+// ── HTML生成（mandala_2026_9x9.htmlスタイル継承） ──
+function generateMandalaHTML() {
+  const d = currentMandalaData;
+  if (!d) return '';
+  const cells = buildMandalaGrid(d);
+  let cellsHtml = '';
+  cells.forEach(cell => {
+    cellsHtml += `<div class="cell ${cell.type}">${cell.text || (cell.type === 'empty' ? '' : '')}</div>\n`;
+  });
+
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${d.title || 'マンダラチャート'}</title>
+  <style>
+    :root{
+      --bg:#0f1115;--card:#151923;--ink:#e9eef8;--muted:#b8c1d6;
+      --line:rgba(233,238,248,.16);--accent:#7aa2ff;
+      --shadow:0 10px 28px rgba(0,0,0,.35);--radius:14px;
+    }
+    @media(prefers-color-scheme:light){
+      :root{--bg:#f6f7fb;--card:#ffffff;--ink:#111827;--muted:#475569;
+      --line:rgba(17,24,39,.12);--accent:#3b82f6;--shadow:0 10px 28px rgba(17,24,39,.08);}
+    }
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;background:var(--bg);color:var(--ink);}
+    .wrap{max-width:1400px;margin:22px auto 44px;padding:0 16px;}
+    header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
+    h1{margin:0;font-size:20px;letter-spacing:.02em;}
+    .sub{margin:0;color:var(--muted);font-size:13px;}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer;box-shadow:var(--shadow);}
+    .btn:hover{border-color:rgba(122,162,255,.55);}
+    .zoomline{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.06);}
+    .zoomval{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;min-width:44px;text-align:right;}
+    input[type="range"]{width:190px;}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);}
+    .viewer{transform-origin:top left;}
+    .mandala{display:grid;grid-template-columns:repeat(9,1fr);gap:0;border:2px solid var(--line);border-radius:12px;overflow:hidden;}
+    .cell{border:1px solid var(--line);padding:8px;min-height:64px;line-height:1.25;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;word-break:break-word;background:rgba(255,255,255,.02);}
+    .pillar{font-weight:750;background:rgba(122,162,255,.10);border-color:rgba(122,162,255,.30);}
+    .subcenter{font-weight:800;background:rgba(122,162,255,.14);border-color:rgba(122,162,255,.34);}
+    .goal{font-weight:900;font-size:13px;background:rgba(122,162,255,.20);border-color:rgba(122,162,255,.45);}
+    .item{background:rgba(0,0,0,.06);}
+    .empty{background:rgba(0,0,0,.02);color:rgba(233,238,248,.2);}
+    .note{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.6;}
+    @media print{:root{--shadow:none;}body{background:#fff;color:#000;}.btn,.zoomline{display:none !important;}.panel{box-shadow:none;}.wrap{margin:0;max-width:100%;padding:0;}.viewer{transform:none !important;}.cell{font-size:9.5px;min-height:44px;padding:5px;}.goal{font-size:10.5px;}.note{display:none;}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>${d.title || 'マンダラチャート'}</h1>
+        <p class="sub">中心目標：<strong>${d.center || ''}</strong></p>
+      </div>
+      <div class="actions">
+        <div class="zoomline">
+          <span class="sub">ズーム</span>
+          <input id="zoom" type="range" min="60" max="140" value="100" />
+          <span class="zoomval" id="zoomval">100%</span>
+        </div>
+        <button class="btn" onclick="document.body.classList.toggle('compact')">コンパクト</button>
+        <button class="btn" onclick="window.print()">印刷 / PDF</button>
+      </div>
+    </header>
+    <section class="panel">
+      <div class="viewer" id="viewer">
+        <div class="mandala">
+          ${cellsHtml}
+        </div>
+      </div>
+      <div class="note">モンタ — QuestQueries / Mandala Coach / ${new Date().toLocaleDateString('ja-JP')}</div>
+    </section>
+  </div>
+  <script>
+    const zoom=document.getElementById('zoom');
+    const viewer=document.getElementById('viewer');
+    const zoomval=document.getElementById('zoomval');
+    function setZoom(p){viewer.style.transform='scale('+p/100+')';zoomval.textContent=p+'%';}
+    zoom.addEventListener('input',e=>setZoom(+e.target.value));
+    setZoom(+zoom.value);
+  <\/script>
+</body>
+</html>`;
+}
+
+function dropMandalaHTML() {
+  try {
+    const html = generateMandalaHTML();
+    if (!html) return;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mandala-${new Date().toISOString().slice(0,10)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  } catch(e) {
+    copyMandalaHTML();
+  }
+}
+
+async function copyMandalaHTML() {
+  const html = generateMandalaHTML();
+  if (!html) return;
+  try {
+    await navigator.clipboard.writeText(html);
+    const btns = document.querySelectorAll('.btn-copy-html');
+    btns.forEach(btn => {
+      const orig = btn.textContent;
+      btn.textContent = '✅ コピー済';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    });
+  } catch(e) {
+    alert('コピーに失敗しました。手動でコンソールから取得してください。');
+  }
+}
+</script>
+</body>
+</html>
