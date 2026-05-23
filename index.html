@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mandalamonchy — Monta, the Mandara Maker</title>
+
+<!-- ★ html2canvas CDN — ローカル化する場合はこのscriptタグを差し替える -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --ink: #1a1a2e;
+  --paper: #f5f0e8;
+  --warm: #faf6ef;
+  --mist: #e8e0d4;
+  --gold: #d4a847;
+  --gold-light: rgba(212,168,71,.15);
+  --sage: #5a7a6a;
+  --monta: #4a7c8e;
+  --monta-light: #e8f2f5;
+  /* scroll card palette */
+  --scroll-bg: #fdf8f0;
+  --scroll-border: #c8a96e;
+  --scroll-ink: #2c1810;
+  --scroll-muted: #7a6a58;
+  --scroll-gold: #b8862a;
+  --scroll-red: #8b2020;
+  --scroll-sage: #4a6b5a;
+  /* cell */
+  --cell-goal: rgba(184,134,42,.20);
+  --cell-pillar: rgba(74,107,90,.15);
+  --cell-sub: rgba(74,107,90,.08);
+  --cell-item: rgba(253,248,240,.9);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--ink);
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 3px solid var(--monta);
+  flex-shrink: 0;
+}
+.header-icon { font-size: 24px; animation: breathe 5s ease-in-out infinite; }
+@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+.header-title { flex: 1; }
+.header-title h1 { font-size: 18px; font-weight: 900; color: #fff; line-height: 1.1; }
+.header-title h1 span { color: var(--gold); font-weight: 400; font-size: 14px; }
+.header-label { font-family: 'Space Mono', monospace; font-size: 9px; color: #666; letter-spacing: 0.2em; }
+.key-indicator {
+  font-family: 'Space Mono', monospace; font-size: 10px; color: #888;
+  cursor: pointer; padding: 4px 8px; border: 1px solid #444; border-radius: 2px;
+}
+.key-indicator:hover { color: #fff; border-color: #fff; }
+.key-indicator.active { color: var(--gold); border-color: var(--gold); }
+
+/* ── LEAD ── */
+.lead-banner {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f2a35 100%);
+  padding: 6px 20px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+  flex-shrink: 0;
+}
+.lead-banner p { font-size: 11px; color: #aaa; letter-spacing: 0.08em; }
+.lead-banner p em { color: var(--gold); font-style: italic; }
+
+/* ── CHAT PANEL ── */
+.chat-panel {
+  flex: 1; display: flex; flex-direction: column;
+  background: var(--warm); min-height: 0;
+}
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 20px 16px;
+  display: flex; flex-direction: column; gap: 14px;
+  scroll-behavior: smooth;
+}
+@media (min-width: 768px) {
+  .chat-messages { padding: 20px calc(50% - 380px); }
+}
+
+/* ── MESSAGES ── */
+.msg { display: flex; gap: 10px; max-width: 100%; }
+.msg.user { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 10px; font-family: 'Space Mono', monospace; font-weight: 700;
+}
+.msg.monta .msg-avatar { background: var(--monta); font-size: 15px; }
+.msg-bubble {
+  max-width: min(500px, calc(100% - 44px));
+  padding: 11px 14px; border-radius: 4px; font-size: 13.5px; line-height: 1.75;
+}
+.msg.monta .msg-bubble {
+  background: #fff; border: 1.5px solid var(--monta-light);
+  border-top-left-radius: 0; box-shadow: 2px 2px 0 var(--monta-light);
+  white-space: pre-wrap;
+}
+.msg.user .msg-bubble {
+  background: var(--ink); color: #fff; border-top-right-radius: 0; white-space: pre-wrap;
+}
+.msg-time { font-family: 'Space Mono', monospace; font-size: 9px; color: #bbb; margin-top: 3px; }
+.msg.monta .msg-time { text-align: left; }
+.msg.user .msg-time { text-align: right; }
+
+/* ── タイピング ── */
+.typing-indicator {
+  display: flex; gap: 4px; padding: 11px 14px; background: #fff;
+  border: 1.5px solid var(--monta-light); border-radius: 4px; border-top-left-radius: 0;
+  width: fit-content;
+}
+.typing-indicator span {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--monta);
+  animation: typing 1.2s ease-in-out infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+
+/* ── INPUT ── */
+.chat-input-area {
+  padding: 12px 16px; background: #fff;
+  border-top: 2px solid var(--mist); flex-shrink: 0;
+}
+@media (min-width: 768px) {
+  .chat-input-area { padding: 12px calc(50% - 380px); }
+}
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.chat-input {
+  flex: 1; border: 2px solid var(--mist); border-radius: 4px; padding: 9px 12px;
+  font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 13.5px; resize: none;
+  min-height: 42px; max-height: 110px; outline: none; transition: border-color 0.2s; line-height: 1.5;
+}
+.chat-input:focus { border-color: var(--monta); }
+.send-btn {
+  background: var(--ink); color: #fff; border: none; border-radius: 4px; padding: 9px 18px;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background 0.2s; white-space: nowrap;
+}
+.send-btn:hover { background: var(--monta); }
+.send-btn:disabled { background: #ccc; cursor: not-allowed; }
+.hint-text { font-family: 'Space Mono', monospace; font-size: 9px; color: #bbb; margin-top: 6px; text-align: center; }
+
+/* ════════════════════════════════════════
+   巻物カード (9:16)
+════════════════════════════════════════ */
+.scroll-card-wrapper {
+  max-width: min(760px, calc(100% - 44px));
+  width: 100%;
+}
+
+/* プレビューコンテナ（チャット内表示） */
+.scroll-preview-outer {
+  background: #fff;
+  border: 2px solid var(--monta);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 3px 3px 0 var(--monta-light);
+}
+.scroll-preview-header {
+  background: var(--ink); color: #fff;
+  padding: 8px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.scroll-preview-header span { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: .1em; }
+.preview-tag { background: var(--gold); color: var(--ink); font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 2px; }
+
+/* 巻物本体（PNG出力対象） */
+.scroll-card {
+  width: 100%;
+  background: var(--scroll-bg);
+  padding: 24px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+}
+
+/* 巻物の装飾ライン */
+.scroll-card::before,
+.scroll-card::after {
+  content: '';
+  position: absolute;
+  left: 12px; right: 12px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--scroll-border), var(--scroll-gold), var(--scroll-border), transparent);
+  border-radius: 2px;
+}
+.scroll-card::before { top: 10px; }
+.scroll-card::after { bottom: 10px; }
+
+/* ── 巻物：上部 ── */
+.scroll-top {
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(200,169,110,.3);
+}
+.scroll-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px; letter-spacing: .2em;
+  color: var(--scroll-muted); margin-bottom: 6px;
+}
+.scroll-center-goal {
+  font-size: 18px; font-weight: 900;
+  color: var(--scroll-ink); line-height: 1.3;
+  margin-bottom: 8px;
+}
+.scroll-monta-word {
+  display: inline-block;
+  background: var(--gold-light);
+  border: 1px solid rgba(184,134,42,.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 11px; color: var(--scroll-gold);
+  font-style: italic;
+}
+.scroll-monta-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px; color: var(--scroll-muted);
+  margin-bottom: 3px; letter-spacing: .1em;
+}
+
+/* ── 巻物：マンダラグリッド ── */
+.scroll-grid-section {
+  flex: 1;
+}
+.scroll-grid-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px; letter-spacing: .15em;
+  color: var(--scroll-muted); text-align: center;
+  margin-bottom: 8px;
+}
+
+/* 9x9グリッド（巻物スタイル） */
+.mandala-scroll-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 1px;
+  background: rgba(200,169,110,.2);
+  border: 1.5px solid var(--scroll-border);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+.sc {
+  background: var(--cell-item);
+  padding: 3px 2px;
+  min-height: 36px;
+  font-size: 8px; line-height: 1.2;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; word-break: break-word;
+  color: var(--scroll-ink);
+}
+.sc.goal {
+  font-weight: 900; font-size: 8px;
+  background: var(--cell-goal);
+  color: var(--scroll-red);
+}
+.sc.pillar {
+  font-weight: 800; font-size: 7.5px;
+  background: var(--cell-pillar);
+  color: var(--scroll-sage);
+}
+.sc.subcenter {
+  font-weight: 700; font-size: 7.5px;
+  background: var(--cell-sub);
+  color: var(--scroll-sage);
+}
+.sc.empty { background: rgba(253,248,240,.5); color: rgba(200,169,110,.4); font-size: 8px; }
+
+/* ── 巻物：下部 ── */
+.scroll-bottom {
+  padding-top: 12px;
+  border-top: 1px solid rgba(200,169,110,.3);
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.scroll-insights {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.scroll-insights-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px; letter-spacing: .15em;
+  color: var(--scroll-muted);
+}
+.scroll-insight-item {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 11px; color: var(--scroll-ink); line-height: 1.4;
+}
+.insight-num {
+  flex-shrink: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--scroll-gold); color: #fff;
+  font-family: 'Space Mono', monospace; font-size: 8px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.scroll-itte {
+  background: rgba(139,32,32,.06);
+  border: 1px solid rgba(139,32,32,.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.scroll-itte-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px; letter-spacing: .1em;
+  color: var(--scroll-red); margin-bottom: 3px;
+}
+.scroll-itte-text {
+  font-size: 12px; font-weight: 700;
+  color: var(--scroll-ink); line-height: 1.4;
+}
+
+/* ── 巻物：フッター ── */
+.scroll-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 4px;
+}
+.scroll-footer-left {
+  font-family: 'Space Mono', monospace;
+  font-size: 7px; color: var(--scroll-muted); letter-spacing: .1em;
+}
+.scroll-monkey { font-size: 14px; }
+
+/* ── アクションボタン ── */
+.scroll-actions {
+  padding: 10px 14px;
+  background: var(--monta-light);
+  display: flex; gap: 8px; align-items: center;
+  border-top: 1px solid #d0e8f0;
+  flex-wrap: wrap;
+}
+.scroll-actions p { flex: 1; font-size: 11px; color: var(--monta); font-weight: 700; min-width: 120px; }
+.btn-action {
+  border: none; border-radius: 4px;
+  padding: 7px 14px;
+  font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(--monta); color: #fff; }
+.btn-primary:hover { background: var(--ink); }
+.btn-secondary { background: transparent; color: var(--monta); border: 1.5px solid var(--monta); }
+.btn-secondary:hover { background: var(--monta); color: #fff; }
+.btn-png { background: var(--scroll-gold); color: #fff; }
+.btn-png:hover { background: var(--scroll-red); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(26,26,46,.75);
+  backdrop-filter: blur(4px); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #fff; border: 3px solid var(--ink); border-radius: 4px;
+  padding: 32px 28px; max-width: 420px; width: 100%; box-shadow: 6px 6px 0 var(--ink);
+}
+.modal-icon { font-size: 36px; text-align: center; margin-bottom: 14px; display: block; }
+.modal-title { font-size: 18px; font-weight: 900; margin-bottom: 6px; text-align: center; }
+.modal-sub { font-size: 12px; color: #666; text-align: center; margin-bottom: 20px; line-height: 1.6; }
+.modal-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.modal-input {
+  flex: 1; border: 2px solid var(--mist); border-radius: 4px; padding: 9px 12px;
+  font-family: 'Space Mono', monospace; font-size: 11px; outline: none;
+}
+.modal-input:focus { border-color: var(--monta); }
+.modal-btn {
+  background: var(--ink); color: #fff; border: none; border-radius: 4px; padding: 9px 18px;
+  font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.modal-btn:hover { background: var(--monta); }
+.modal-note { font-size: 10px; color: #aaa; line-height: 1.6; text-align: center; }
+.modal-note a { color: var(--monta); text-decoration: none; }
+.modal-error { font-size: 11px; color: #c84b31; text-align: center; margin-bottom: 8px; min-height: 14px; }
+
+/* ── PNG出力中オーバーレイ ── */
+.png-overlay {
+  position: fixed; inset: 0; background: rgba(26,26,46,.8);
+  z-index: 2000; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px;
+}
+.png-overlay.hidden { display: none; }
+.png-overlay p { color: #fff; font-family: 'Space Mono', monospace; font-size: 12px; }
+.spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-icon">🐒</div>
+  <div class="header-title">
+    <div class="header-label">QQ #012 / questqueries</div>
+    <h1>mandalamonchy <span>— Monta, the Mandara Maker</span></h1>
+  </div>
+  <div class="key-indicator" id="keyIndicator" onclick="showKeyModal()">🔑 APIキー未設定</div>
+</header>
+
+<div class="lead-banner">
+  <p><em>cast your vision, catch your mandara</em></p>
+</div>
+
+<!-- APIキーモーダル -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal-box">
+    <span class="modal-icon">🐒</span>
+    <div class="modal-title">APIキーを設定してね</div>
+    <div class="modal-sub">モンタを動かすにはAnthropicのAPIキーが必要。<br>キーはこのブラウザにだけ保存されるよ。</div>
+    <div class="modal-error" id="keyError"></div>
+    <div class="modal-input-row">
+      <input type="password" class="modal-input" id="keyInput" placeholder="sk-ant-..." autocomplete="off">
+      <button class="modal-btn" onclick="saveApiKey()">保存</button>
+    </div>
+    <div class="modal-note">
+      <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> でキーを取得できるよ。
+    </div>
+  </div>
+</div>
+
+<!-- PNG出力中オーバーレイ -->
+<div class="png-overlay hidden" id="pngOverlay">
+  <div class="spinner"></div>
+  <p>🐒 巻物を描いてるよ…</p>
+</div>
+
+<div class="chat-panel">
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-area">
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="userInput" placeholder="モンタに話しかけてみよう" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">送る</button>
+    </div>
+    <div class="hint-text">Enter で送信 / Shift+Enter で改行</div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  SYSTEM PROMPT
+// ══════════════════════════════════════
+const MONTA_SYSTEM = `あなたは「モンタ」— Magic Monkey Monta, the Mandara Maker です。
+曼荼羅チャートを対話しながら作り、「読み解く案内人」として振る舞います。
+
+## キャラクター
+- 魔法使いのサル。飄々としてるけど、手だけは異様に速い職人
+- 最初の一言：「考える前に、手を動かしてみようか」
+- ユーザーが詰まったら：「どうした？じゃあ僕が書いてみるよ」
+- 完璧主義を壊す。「空欄は伸び代」が信念
+- 単なるマスコットではなく、曼荼羅を読み解く相棒・案内人
+
+## 対話フロー
+
+### Step 1: アイスブレイク
+進め方を選んでもらう：
+「提案型（モンタが先に叩き台を出す）」か「対話型（一緒にじっくり）」か。
+
+### Step 2: 心の温度確認
+3つだけ聞く（短く、軽く）：
+- 最近うまくいったこと・嬉しかったこと
+- もっとこうしたかったこと
+- 自分らしいと思う瞬間
+
+### Step 3: 中心目標の提案
+振り返りをもとに中心目標を3案提示。ユーザーが選ぶ。
+
+### Step 4: 8つの柱を決める
+振り返りベースの柱案8つを提示。「おまかせ」で即確定。
+
+### Step 5: 各柱の行動を決める
+柱ごとに8つの行動案を提示（短い言葉で）。
+「残りもおまかせ」で全柱を一気に埋める。空欄OKを常に伝える。
+
+### Step 6: 確認・調整
+完成案を要約提示。バランス確認。
+
+### Step 7: モンタの読み（重要）
+ユーザーが「OK」「いいね」「これで」など承認したら、
+以下の3つを短く語る：
+- 「モンタの問い」：このチャートを見て、モンタが感じた問い
+- 「気づきベスト3」：柱やアクションの中から光るもの3つ
+- 「今日の一手」：明日すぐできる具体的な一歩
+
+その後、必ず以下のJSONを出力する：
+
+\`\`\`mandala
+{
+  "title": "チャートのタイトル",
+  "center": "中心目標の文章",
+  "monta_word": "モンタのひとこと（20字以内、詩的に）",
+  "monta_question": "モンタの問い（30字以内）",
+  "insights": ["気づき1（20字以内）", "気づき2（20字以内）", "気づき3（20字以内）"],
+  "first_move": "今日の一手（30字以内）",
+  "pillars": [
+    { "name": "柱1名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱2名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱3名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱4名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱5名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱6名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱7名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] },
+    { "name": "柱8名", "items": ["行動1","行動2","行動3","行動4","行動5","行動6","行動7","行動8"] }
+  ]
+}
+\`\`\`
+
+ルール：
+- itemsが8個未満は "" で埋める
+- monta_word は詩的・短い。例「迷いは羅針盤、動けば晴れる」
+- JSONブロック以外の説明はJSON前に書く
+
+## コミュニケーション原則
+- 短い文。友達感覚。丁寧すぎない
+- 「おまかせ」「スキップ」には即対応
+- 進捗を軽く示す（「柱 3/8」など）
+- 疲れたら「残りはモンタに任せる？」と声かけ
+- 文末に絵文字1つ以内（多用しない）`;
+
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let messages = [];
+let currentMandalaData = null;
+let isLoading = false;
+let apiKey = '';
+
+// ══════════════════════════════════════
+//  API KEY
+// ══════════════════════════════════════
+function loadApiKey() { try { return localStorage.getItem('monta_api_key') || ''; } catch(e) { return ''; } }
+function saveApiKey() {
+  const input = document.getElementById('keyInput').value.trim();
+  const err = document.getElementById('keyError');
+  if (!input.startsWith('sk-ant-')) { err.textContent = '「sk-ant-」で始まるキーを入力してね'; return; }
+  try { localStorage.setItem('monta_api_key', input); } catch(e) {}
+  apiKey = input; err.textContent = '';
+  hideKeyModal(); updateKeyIndicator(true);
+}
+function showKeyModal() {
+  document.getElementById('keyInput').value = apiKey || '';
+  document.getElementById('keyError').textContent = '';
+  document.getElementById('keyModal').classList.remove('hidden');
+}
+function hideKeyModal() { document.getElementById('keyModal').classList.add('hidden'); }
+function updateKeyIndicator(active) {
+  const el = document.getElementById('keyIndicator');
+  el.textContent = active ? '🔑 APIキー設定済' : '🔑 APIキー未設定';
+  el.classList.toggle('active', active);
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+window.addEventListener('load', () => {
+  apiKey = loadApiKey();
+  if (apiKey) { hideKeyModal(); updateKeyIndicator(true); }
+  else { document.getElementById('keyModal').classList.remove('hidden'); }
+  document.getElementById('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveApiKey(); });
+
+  addMontaMessage('考える前に、手を動かしてみようか。🐒\n\nモンタです。マンダラチャート、一緒に作ろう。\n\n進め方どっちにする？\n\n A）提案型（おすすめ）\n　 僕が先に叩き台を出す。選んで調整するだけ。\n\n B）対話型\n　 一つずつ、じっくり一緒に。');
+
+  document.getElementById('userInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.getElementById('userInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+  });
+});
+
+// ══════════════════════════════════════
+//  CHAT
+// ══════════════════════════════════════
+function addMontaMessage(text) { messages.push({ role: 'assistant', content: text }); renderMessage('monta', text); }
+function addUserMessage(text) { messages.push({ role: 'user', content: text }); renderMessage('user', text); }
+
+function scrollToBottom() {
+  const c = document.getElementById('chatMessages');
+  c.scrollTop = c.scrollHeight;
+}
+
+function renderMessage(who, text) {
+  const container = document.getElementById('chatMessages');
+  const typing = container.querySelector('.typing-msg');
+  if (typing) typing.remove();
+
+  const msgEl = document.createElement('div');
+  msgEl.className = `msg ${who}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = who === 'monta' ? '🐒' : 'you';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text.replace(/```mandala[\s\S]*?```/g, '').trim();
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  const now = new Date();
+  time.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const inner = document.createElement('div');
+  inner.style.cssText = 'display:flex;flex-direction:column;max-width:min(500px,calc(100% - 44px));';
+  inner.appendChild(bubble);
+  inner.appendChild(time);
+
+  if (who === 'user') { msgEl.appendChild(inner); msgEl.appendChild(avatar); }
+  else { msgEl.appendChild(avatar); msgEl.appendChild(inner); }
+
+  container.appendChild(msgEl);
+  scrollToBottom();
+}
+
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg monta typing-msg';
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '🐒';
+  const ind = document.createElement('div');
+  ind.className = 'typing-indicator';
+  ind.innerHTML = '<span></span><span></span><span></span>';
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(ind);
+  container.appendChild(wrapper);
+  scrollToBottom();
+}
+
+// ══════════════════════════════════════
+//  SEND
+// ══════════════════════════════════════
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  input.value = ''; input.style.height = 'auto';
+  if (!apiKey) { showKeyModal(); return; }
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+  showTyping();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2500,
+        system: MONTA_SYSTEM,
+        messages: messages.slice(-24)
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'ごめん、うまく受け取れなかった…もう一度話しかけて';
+    addMontaMessage(reply);
+
+    // mandalaブロック検出
+    const mandalaMatch = reply.match(/```mandala\n([\s\S]*?)\n```/);
+    if (mandalaMatch) {
+      try {
+        const mandalaData = JSON.parse(mandalaMatch[1]);
+        currentMandalaData = mandalaData;
+        insertScrollCard(mandalaData);
+      } catch(e) {
+        console.error('Mandala parse error:', e);
+        addMontaMessage('チャートの描画でちょっとつまずいた。「もう一度チャートを出して」って言ってみて');
+      }
+    }
+  } catch(e) {
+    console.error(e);
+    addMontaMessage('通信がちょっと途切れた。もう一度試してみて');
+  } finally {
+    isLoading = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+// ══════════════════════════════════════
+//  9x9グリッド配置ロジック
+// ══════════════════════════════════════
+function buildMandalaGrid(data) {
+  const cells = new Array(81).fill(null).map(() => ({ type: 'empty', text: '' }));
+  const center = data.center || '';
+  const pillars = data.pillars || [];
+
+  const blockPos = [
+    [0,0],[0,3],[0,6],
+    [3,6],[6,6],[6,3],
+    [6,0],[3,0]
+  ];
+  const itemOffsets = [
+    [0,0],[0,1],[0,2],
+    [1,0],     [1,2],
+    [2,0],[2,1],[2,2]
+  ];
+  const pillarPos = [
+    [3,3],[3,4],[3,5],
+    [4,3],     [4,5],
+    [5,3],[5,4],[5,5]
+  ];
+
+  cells[4*9+4] = { type: 'goal', text: center };
+
+  pillars.forEach((pillar, pi) => {
+    const [br, bc] = blockPos[pi];
+    cells[(br+1)*9+(bc+1)] = { type: 'subcenter', text: pillar.name || '' };
+    cells[pillarPos[pi][0]*9+pillarPos[pi][1]] = { type: 'pillar', text: pillar.name || '' };
+    const items = pillar.items || [];
+    itemOffsets.forEach((offset, ii) => {
+      const r = br + offset[0];
+      const c = bc + offset[1];
+      const t = items[ii] || '';
+      cells[r*9+c] = { type: t ? 'item' : 'empty', text: t };
+    });
+  });
+  return cells;
+}
+
+// ══════════════════════════════════════
+//  巻物カードをチャットに挿入
+// ══════════════════════════════════════
+function insertScrollCard(data) {
+  const container = document.getElementById('chatMessages');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg monta';
+  wrapper.style.maxWidth = '100%';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '🐒';
+
+  const cardWrapper = document.createElement('div');
+  cardWrapper.className = 'scroll-card-wrapper';
+
+  const outer = document.createElement('div');
+  outer.className = 'scroll-preview-outer';
+
+  // ヘッダー
+  outer.innerHTML = `
+    <div class="scroll-preview-header">
+      <span>🐒 ${data.title || 'マンダラチャート'}</span>
+      <span class="preview-tag">PREVIEW</span>
+    </div>`;
+
+  // 巻物本体（PNG出力対象）
+  const card = document.createElement('div');
+  card.className = 'scroll-card';
+  card.id = 'scrollCardBody_' + Date.now();
+
+  const cells = buildMandalaGrid(data);
+  let gridHtml = '<div class="mandala-scroll-grid">';
+  cells.forEach(cell => {
+    gridHtml += `<div class="sc ${cell.type}">${cell.text || (cell.type === 'empty' ? '·' : '')}</div>`;
+  });
+  gridHtml += '</div>';
+
+  const insights = data.insights || ['—', '—', '—'];
+  const insightsHtml = insights.map((ins, i) =>
+    `<div class="scroll-insight-item"><span class="insight-num">${i+1}</span><span>${ins}</span></div>`
+  ).join('');
+
+  const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' });
+
+  card.innerHTML = `
+    <div class="scroll-top">
+      <div class="scroll-title">${data.title || 'MANDALA CHART'}</div>
+      <div class="scroll-center-goal">${data.center || ''}</div>
+      ${data.monta_question ? `<div class="scroll-monta-label">Montaの問い</div><div class="scroll-monta-word">${data.monta_question}</div>` : ''}
+    </div>
+
+    <div class="scroll-grid-section">
+      <div class="scroll-grid-label">9 × 9 MANDALA</div>
+      ${gridHtml}
+    </div>
+
+    <div class="scroll-bottom">
+      <div class="scroll-insights">
+        <div class="scroll-insights-title">🐒 MONTA'S INSIGHTS</div>
+        ${insightsHtml}
+      </div>
+      ${data.first_move ? `
+      <div class="scroll-itte">
+        <div class="scroll-itte-label">今日の一手</div>
+        <div class="scroll-itte-text">→ ${data.first_move}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="scroll-footer">
+      <div class="scroll-footer-left">mandalamonchy / QQ #012 / ${today}</div>
+      <div class="scroll-monkey">🐒</div>
+    </div>`;
+
+  // アクションボタン
+  const actions = document.createElement('div');
+  actions.className = 'scroll-actions';
+  const cardId = card.id;
+  actions.innerHTML = `
+    <p>できたよ 🐒 PNGで保存できるよ</p>
+    <button class="btn-action btn-png" onclick="saveAsPNG('${cardId}')">⬇ PNG保存</button>
+    <button class="btn-action btn-secondary" onclick="saveAsHTML()">HTML保存</button>`;
+
+  outer.appendChild(card);
+  outer.appendChild(actions);
+  cardWrapper.appendChild(outer);
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(cardWrapper);
+  container.appendChild(wrapper);
+  scrollToBottom();
+}
+
+// ══════════════════════════════════════
+//  PNG保存
+// ══════════════════════════════════════
+async function saveAsPNG(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const overlay = document.getElementById('pngOverlay');
+  overlay.classList.remove('hidden');
+  try {
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#fdf8f0',
+      logging: false
+    });
+    const link = document.createElement('a');
+    link.download = `mandalamonchy-${new Date().toISOString().slice(0,10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch(e) {
+    console.error('PNG error:', e);
+    alert('PNG保存に失敗しました。HTMLで保存してみてね。');
+  } finally {
+    overlay.classList.add('hidden');
+  }
+}
+
+// ══════════════════════════════════════
+//  HTML保存
+// ══════════════════════════════════════
+function saveAsHTML() {
+  const d = currentMandalaData;
+  if (!d) return;
+  const cells = buildMandalaGrid(d);
+  let cellsHtml = '';
+  cells.forEach(cell => {
+    cellsHtml += `<div class="cell ${cell.type}">${cell.text || ''}</div>\n`;
+  });
+  const today = new Date().toLocaleDateString('ja-JP');
+  const insights = d.insights || [];
+  const insightsHtml = insights.map((ins, i) =>
+    `<div class="insight-item"><span class="in">${i+1}</span>${ins}</div>`
+  ).join('');
+
+  const html = `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${d.title || 'マンダラチャート'} — mandalamonchy</title>
+<style>
+:root{--scroll-bg:#fdf8f0;--scroll-border:#c8a96e;--scroll-ink:#2c1810;--scroll-muted:#7a6a58;--scroll-gold:#b8862a;--scroll-red:#8b2020;--scroll-sage:#4a6b5a;--line:rgba(200,169,110,.2);}
+body{margin:0;background:#f5f0e8;font-family:system-ui,-apple-system,"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;display:flex;justify-content:center;padding:24px 16px;}
+.wrap{max-width:640px;width:100%;}
+h1{font-size:16px;color:#1a1a2e;margin-bottom:4px;}
+.sub{font-size:12px;color:#888;margin-bottom:16px;}
+.actions{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.btn{border:1px solid #ccc;background:#fff;border-radius:999px;padding:6px 14px;font-size:12px;cursor:pointer;}
+.btn:hover{background:#1a1a2e;color:#fff;border-color:#1a1a2e;}
+.scroll-card{background:var(--scroll-bg);border:2px solid var(--scroll-border);border-radius:8px;padding:24px 20px 28px;position:relative;}
+.scroll-card::before,.scroll-card::after{content:'';position:absolute;left:12px;right:12px;height:3px;background:linear-gradient(90deg,transparent,var(--scroll-border),var(--scroll-gold),var(--scroll-border),transparent);}
+.scroll-card::before{top:10px;}.scroll-card::after{bottom:10px;}
+.sc-title{font-size:10px;letter-spacing:.2em;color:var(--scroll-muted);text-align:center;margin-bottom:6px;font-family:monospace;}
+.sc-center{font-size:20px;font-weight:900;color:var(--scroll-ink);text-align:center;margin-bottom:8px;}
+.sc-question{font-size:12px;color:var(--scroll-gold);text-align:center;font-style:italic;margin-bottom:16px;}
+.grid-label{font-size:9px;letter-spacing:.15em;color:var(--scroll-muted);text-align:center;margin-bottom:8px;font-family:monospace;}
+.mandala{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;background:var(--line);border:1.5px solid var(--scroll-border);border-radius:4px;overflow:hidden;margin-bottom:16px;}
+.cell{background:#fdf8f0;padding:4px 3px;min-height:40px;font-size:8px;line-height:1.25;display:flex;align-items:center;justify-content:center;text-align:center;word-break:break-word;color:var(--scroll-ink);}
+.goal{font-weight:900;background:rgba(184,134,42,.2);color:var(--scroll-red);}
+.pillar{font-weight:800;background:rgba(74,107,90,.15);color:var(--scroll-sage);}
+.subcenter{font-weight:700;background:rgba(74,107,90,.08);color:var(--scroll-sage);}
+.empty{background:rgba(253,248,240,.5);color:rgba(200,169,110,.3);}
+.section-title{font-size:9px;letter-spacing:.1em;color:var(--scroll-muted);margin-bottom:8px;font-family:monospace;}
+.insights{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.insight-item{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--scroll-ink);}
+.in{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:var(--scroll-gold);color:#fff;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.first-move{background:rgba(139,32,32,.06);border:1px solid rgba(139,32,32,.2);border-radius:4px;padding:10px 14px;}
+.fm-label{font-size:9px;letter-spacing:.1em;color:var(--scroll-red);margin-bottom:3px;font-family:monospace;}
+.fm-text{font-size:13px;font-weight:700;color:var(--scroll-ink);}
+.footer{display:flex;justify-content:space-between;margin-top:16px;font-size:9px;color:var(--scroll-muted);font-family:monospace;}
+.zoomline{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.viewer{transform-origin:top left;}
+@media print{.actions,.zoomline{display:none!important;}.viewer{transform:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>${d.title || 'マンダラチャート'}</h1>
+  <p class="sub">中心目標：${d.center || ''}</p>
+  <div class="actions">
+    <div class="zoomline">
+      ズーム <input id="zoom" type="range" min="60" max="120" value="100">
+      <span id="zv">100%</span>
+    </div>
+    <button class="btn" onclick="window.print()">印刷 / PDF</button>
+  </div>
+  <div class="viewer" id="viewer">
+    <div class="scroll-card">
+      <div class="sc-title">${d.title || 'MANDALA CHART'}</div>
+      <div class="sc-center">${d.center || ''}</div>
+      ${d.monta_question ? `<div class="sc-question">🐒 ${d.monta_question}</div>` : ''}
+      <div class="grid-label">9 × 9 MANDALA</div>
+      <div class="mandala">${cellsHtml}</div>
+      <div class="section-title">🐒 MONTA'S INSIGHTS</div>
+      <div class="insights">${insightsHtml}</div>
+      ${d.first_move ? `<div class="first-move"><div class="fm-label">今日の一手</div><div class="fm-text">→ ${d.first_move}</div></div>` : ''}
+      <div class="footer">
+        <span>mandalamonchy / QQ #012 / ${today}</span>
+        <span>🐒</span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const z=document.getElementById('zoom'),v=document.getElementById('viewer'),zv=document.getElementById('zv');
+z.addEventListener('input',()=>{v.style.transform='scale('+z.value/100+')';zv.textContent=z.value+'%';});
+<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `mandalamonchy-${new Date().toISOString().slice(0,10)}.html`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+</script>
+</body>
+</html>
